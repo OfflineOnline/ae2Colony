@@ -24,6 +24,7 @@ At some point I'll probably abandon this script, so if you want to use it and ma
 - I need a second monitor that displays "raw" colonist.getRequests(). It's possible to miss important info like Hospitals wanting potatoes because c:foods is blacklisted.
 - I'd like to make a nicer monitor display
 - I'd like more robost information feedback about AE2 autocrafting status.
+- Add toggle to disable domum ornamenum logic, colonists can apparently craft blocks?
 
 # Videos
 v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw (This video is old, script is much newer.)
