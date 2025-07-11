@@ -26,4 +26,4 @@ At some point I'll probably abandon this script, so if you want to use it and ma
 - I'd like more robost information feedback about AE2 autocrafting status.
 
 # Videos
-v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw
+v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw (This video is old, script is much newer.)
