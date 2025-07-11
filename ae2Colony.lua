@@ -16,6 +16,7 @@ local exportSide = "front"
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
 local craftMaxStack = false -- autocraft exact or a stack. ie 3 logs vs 64 logs.
+local fallbackEnable = true -- fallback currently not working, leave false
 local scanInterval = 30
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
@@ -44,7 +45,7 @@ local fallback = {
   boots      = "minecraft:leather_boots",
   leggings   = "minecraft:leather_leggings",
   helmet     = "minecraft:leather_helmet",
-  sword      = "minecraft:wooden_sword",
+  --sword      = "minecraft:wooden_sword",  guard seems to insist on gold sword, so it's filling warehouse with wooden_sword
   pickaxe    = "minecraft:wooden_pickaxe",
   axe        = "minecraft:wooden_axe",
   shovel     = "minecraft:wooden_shovel",
@@ -402,23 +403,27 @@ local function mainHandler(bridge, colony)
           end
         end
       -- [CASE 2] Matched keyword for tool or armour
-      elseif fallbackItem then                                -- something like minecraft:wooden_sword
-        local inStock = fallbackCache[fallbackItem]
-        if not inStock then
-          inStock = bridge.getItem({name = fallbackItem, count = requestCount, components = {}})
-          fallbackCache[fallbackItem] = inStock
-        end
+      elseif fallbackItem then
+        if fallbackEnable then
+          local inStock = fallbackCache[fallbackItem]
+          if not inStock then
+            inStock = bridge.getItem({name = fallbackItem, count = requestCount, components = {}})
+            fallbackCache[fallbackItem] = inStock
+          end
 
-        logAndDisplay(string.format("[INFO] %s instead of %s", fallbackItem, requestName))
-        local hasNBT = inStock.components and next(inStock.components)
-        if inStock and inStock.count >= requestCount and not hasNBT  then
-          queueExport(nil, requestCount, fallbackItem, requestTarget)
+          logAndDisplay(string.format("[INFO] %s instead of %s", fallbackItem, requestName))
+          local hasNBT = inStock.components and next(inStock.components)
+          if inStock and inStock.count >= requestCount and not hasNBT  then
+            queueExport(nil, requestCount, fallbackItem, requestTarget)
+          else
+            -- Crude swapping of request data, it contains both fallbackItem data as well as the original requested item.
+            request.items[1].name = fallbackItem
+            request.items[1].fingerprint = inStock.fingerprint or nil
+            request.count = requestCount
+            local craftObject = craftHandler(request, nil, bridge)
+          end
         else
-          -- Crude swapping of request data, it contains both fallbackItem data as well as the original requested item.
-          request.items[1].name = fallbackItem
-          request.items[1].fingerprint = inStock.fingerprint or nil
-          request.count = requestCount
-          local craftObject = craftHandler(request, nil, bridge)
+          logAndDisplay(string.format("[MANUAL] Fallback logic disabled for: %s", requestName))
         end
       -- [CASE 3] Bridge fingerprint match, and has enough items.
       -- [CASE 4] Bridge fingerprint match, but items equal or less. We craft if equal because fast fingerprints only work if items >0
