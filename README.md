@@ -10,6 +10,7 @@ At some point I'll probably abandon this script, so if you want to use it and ma
 - The idea is it makes it very nice for exporting the EXACT item from AE2. I've since just kept adding stuff, so it's kinda messy...
 
 # Setup
+- wget https://raw.githubusercontent.com/toastonrye/ae2Colony/refs/heads/main/ae2Colony.lua
 1. This script was written while playing ATM10 v4.2, it requires several mods from that modpack. CC:Tweaked, Advanced Peripherals, Minecolonies, AE2.
 2. The Advanced Peripherals(AP) mod goes through frequent updates, there is a significant chance this script won't work if the AP version isn't 0.7.51b
 3. You need to understand how to setup AE2 autocrafting systems, and have a general idea how Minecolonies works.
