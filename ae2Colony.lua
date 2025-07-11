@@ -2,27 +2,15 @@ local scriptName = "AE2 Colony - Item Exporter"
 local scriptVersion = 0.2
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
+https://github.com/toastonrye/ae2Colony/blob/main/README.md
 
-setup requirements
-- I might make a video, toastonryeYT on Youtube...
-- Can this setup be on a subnet, storage bus facing an interface on the main, have its own crafting CPUs??
-- TODO
+Setup
+Please see the Github for more detailed information!
 
-Known Issues
-- AP v0.7.51b getRequests() seems to crash script if colonists are missing basic tools, reported to AP developer.
-- Large item count exports may error, like 500 cobble. It usually works after a few script scans intervals.
-- Need a second script to display raw requests. Like how blacklisting c:foods hid that Hospitals wanted carrots.
-
-Design
-- This script is suppose to ignore tools/armour with NBT data, no enchants.
-
-features:
-- display + logging
-- exports only unenchanted basic tools/armor
-- skips blacklisted items
-- auto-crafts if needed
-- dedicated crafting cpu or backlog
+Errors
+For errors please see the Github, maybe I can help... There is a list of known errors!
 ---------------------------------------------------------------------------------------------------------------------]]
+
 -- [USER CONFIG] ------------------------------------------------------------------------------------------------------
 local exportSide = "front"
 local logFolder = "ae2Colony_logs"
@@ -31,7 +19,7 @@ local craftMaxStack = false -- when ae2 autocrafts, make the exact request or ma
 local scanInterval = 30  -- seconds
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
--- blacklistedTags: all items matching given tag are skipped, they do not export.
+-- blacklistedTags: all items matching the given tags are skipped, they do not export.
 local blacklistedTags = {
   ["c:foods"] = true,
 }
@@ -47,7 +35,7 @@ local whitelistItemName = {
 
 -- [TOOLS & ARMOUR LOOKUPS]----------------------------------------------------------------------------------------------------
 -- NOTE: I had plans to have different tiers, but because of the script crash from colonists missing tools...
--- It's difficult to implement until a new AP version is releasted.
+-- It's difficult to implement until a new AP version is releasted. Newer than version 0.7.51b for Advanced Peripherals
 -- See https://github.com/IntelligenceModding/AdvancedPeripherals/issues/748 for more context.
 local fallback = {
   chestplate = "minecraft:leather_chestplate",
