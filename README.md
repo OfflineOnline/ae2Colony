@@ -1,7 +1,7 @@
 # ae2Colony
 A CC:Tweaked lua script that sends AE2 items to Minecolonies
 
-At some point I'll probably abandon this script, so if you want to use it and make upgrades to it, go for it! Please send me a link so I can maybe use it in the future.
+At some point I'll probably abandon this script, so if you want to use it and make upgrades, go for it! Please send me a link so I can maybe use it in the future.
 
 # Setup
 1. This script was written while playing ATM10 v4.2, it requires several mods from that modpack. CC:Tweaked, Advanced Peripherals, Minecolonies, AE2.
