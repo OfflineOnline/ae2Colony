@@ -1,5 +1,5 @@
-local scriptName = "AE2 Colony - Item Exporter"
-local scriptVersion = 0.2
+local scriptName = "AE2 Colony"
+local scriptVersion = 0.3
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
 https://github.com/toastonrye/ae2Colony/blob/main/README.md
@@ -15,13 +15,14 @@ For errors please see the Github, maybe I can help... There is a list of known e
 local exportSide = "front"
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
-local craftMaxStack = false -- when ae2 autocrafts, make the exact request or make an entire stack. ie 3 logs vs 64 logs
-local scanInterval = 30  -- seconds
+local craftMaxStack = false -- autocraft exact or a stack. ie 3 logs vs 64 logs.
+local scanInterval = 30
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
 -- blacklistedTags: all items matching the given tags are skipped, they do not export.
 local blacklistedTags = {
   ["c:foods"] = true,
+  ["c:tools"] = true,
 }
 
 -- whitelistItemName: specific item names can be whitelisted.
@@ -31,28 +32,14 @@ local whitelistItemName = {
   --["minecraft:cod"] = true,
   --["minecraft:beef"] = true,
   ["minecraft:carrot"] = true,
+  ["minecraft:potato"] = true,
+  ["minecolonies:apple_pie"] = true,
 }
 
 -- [TOOLS & ARMOUR LOOKUPS]----------------------------------------------------------------------------------------------------
--- NOTE: I had plans to have different tiers, but because of the script crash from colonists missing tools...
--- It's difficult to implement until a new AP version is releasted. Newer than version 0.7.51b for Advanced Peripherals
--- See https://github.com/IntelligenceModding/AdvancedPeripherals/issues/748 for more context.
+-- Future scripts might have tiers for tools/armours, but for now c:tools is blacklisted.
+-- QUESTION: It maybe better to just have colonists make tools and armour?
 local fallback = {
-  chestplate = "minecraft:leather_chestplate",
-  boots      = "minecraft:leather_boots",
-  leggings   = "minecraft:leather_leggings",
-  helmet     = "minecraft:leather_helmet",
-  sword      = "minecraft:wooden_sword",
-  pickaxe    = "minecraft:wooden_pickaxe",
-  axe        = "minecraft:wooden_axe",
-  shovel     = "minecraft:wooden_shovel",
-  hoe        = "minecraft:wooden_hoe"
-}
-
--- If getRequests() fails, we try to send a "care package" of tools, seems to fix colonist complaints. It's crude.
--- Tool tier level should all be lowest, ie wooden to make sure all colonists can use. Only tested with wooden.
--- If you upgrade a guard tower to level 2 or 3, manually give them a better tier weapon. Or pickaxe for builders.
-local carePackage = {
   chestplate = "minecraft:leather_chestplate",
   boots      = "minecraft:leather_boots",
   leggings   = "minecraft:leather_leggings",
@@ -103,7 +90,6 @@ local function setupMonitor()
   monitor.setTextScale(0.5)
   monitor.clear()
   monitor.setCursorPos(1, 1)
-  --monitor.write("AE2 Exporter Ready")
   return monitor
 end
 
@@ -153,7 +139,7 @@ local function updateMonitorGrouped(monitor)
   end
 
   local _, yMax = monitor.getSize()
-  local y = 2  -- leave line 1 for progress bar
+  local y = 2
   for label, entries in pairs(groups) do
     if #entries > 0 then
       if y > yMax then return end
@@ -197,17 +183,6 @@ local function confirmConnection(bridge)
 end
 
 -- [UTILS] ------------------------------------------------------------------------------------------------------------
-
-
--- Not using hasEnchantments because we use exact fingerprints or send name with components = {}, empty tag.
-local function hasEnchantments(item)
-  if not item or not item.components then return false end
-  for k, _ in pairs(item.components) do
-    if string.lower(k):find("ench") then return true end
-  end
-  return false
-end
-
 local exportBuffer = {}
 local function queueExport(fingerprint, count, name, target)
   table.insert(exportBuffer, {
@@ -238,6 +213,7 @@ local function processExportBuffer(bridge)
 end
 
 -- [HANDLERS] ---------------------------------------------------------------------------------------------------------
+-- AP fingerprints are amazing. Use "/advancedperipehrals getHashItem" in-game
 local function bridgeDataHandler(bridge)
   local indexFingerprint = {}
   local ok, result = pcall(function()
@@ -253,39 +229,6 @@ local function bridgeDataHandler(bridge)
   return indexFingerprint
 end
 
--- A crude solution to send tools to try and stop a weird bug.
-local function carePackageHandler(bridge)
-  local craftable
-  local ok, result
-  for _, tool in pairs(carePackage) do
-    ok,  result = pcall(function() return bridge.exportItem({
-      name = tool,
-      count = 1,
-      components = {}
-      }, exportSide)
-    end)
-    if not ok then
-      craftable = bridge.isCraftable({name = tool, components = {}})
-      if craftable then
-        ok, result = pcall(function() return bridge.craftItem({name = tool, count = 1, components = {}}) end)
-        os.sleep(3)
-      end
-    end
-    if not ok then
-      local msg = string.format("[ERROR] Care package failed, unknown.") -- player needs to investigate why...
-      print(msg)
-      logLine(msg)
-      return false
-    else
-      local msg = string.format("[INFO] Care package: %s", tool)
-      print(msg)
-      logLine(msg)
-    end
-  end
-  return true
-end
-
-local tries = 0
 local function colonyRequestHandler(colony, bridge)
   local ok, result = pcall(function()
     return colony.getRequests()
@@ -298,38 +241,24 @@ local function colonyRequestHandler(colony, bridge)
       return result
     end
   else
-    -- In AP v0.7.51b colony.getRequests() can fail because colonists are missing basic tools, some issue with enchantment data.
-    -- Put a few wooden swords/hoes/shovel/pickaxe/axes to your warehouses and the error clears. Reported to AP Github.
-    if tries == 0 then
-      tries = tries + 1
-      carePackageHandler(bridge)
-      local msg = string.format("[INFO] Waiting 10s for colonists to find gear.")
-      term.setTextColor(colors.orange)
-      print(msg)
-      logLine(msg)
-      os.sleep(10)
-      colonyRequestHandler(colony, bridge)
-    else
-      local msg = string.format("[ERROR] Critical failure for colony_integrator getRequests().")
-      print(msg)
-      logLine(msg)
-      os.sleep(1)
-      error(result)
-    end
+    -- Reported to Advanced Peripherals Github, should be fixed in newer versions.
+    -- https://github.com/IntelligenceModding/AdvancedPeripherals/issues/748
+    -- In v0.7.51b colony.getRequests() can fail because colonists are missing basic tools, some issue with enchantment data.
+    -- Put a few basic wooden swords/hoes/shovel/pickaxe/axes in your warehouse.
+    -- Also do leather armour as well, I've seen a failure from enchantment "feather falling".
+    local msg = string.format("[ERROR] Critical failure for colony_integrator getRequests().")
+    print(msg)
+    logLine(msg)
+    os.sleep(1)
+    error(result)
   end
-  local msg = string.format("[INFO] getRequests() error fixed!")
-  term.setTextColor(colors.lime)
-  print(msg)
-  term.setTextColor(colors.white)
-  logLine(msg)
-  return result
 end
 
--- FUTURE: if desc mentions max/min tiers for gear, more complex fallback list 
+-- QUESTION: If desc mentions max/min tiers for gear, more complex fallback list?
 local function keywordHandler(request)
   local keywords = {"chestplate", "boots", "leggings", "helmet", "sword", "shovel", "pickaxe", "axe", "hoe"}
     local label = string.lower(request.name or "")
-    --local desc = request.desc or "" 
+    --local desc = request.desc or "
     for _, word in ipairs(keywords) do
       local pattern = "%f[%a]" .. word .. "%f[%A]"
       if string.find(label, pattern) then
@@ -340,7 +269,7 @@ local function keywordHandler(request)
 end
 
 -- See blacklisted tags and whitelisted items table at top of script.
--- Basically blacklist an entire tag like c:foods then whitelist food for colonists to cook, like raw beef.
+-- Basically blacklist an entire tag like c:foods then whitelist food for colonists to cook, like raw beef. Or carrots/potatoes for hospitals.
 local function tagHandler(requestItem)
   if whitelistItemName[requestItem.name] then
     return true, true
@@ -358,9 +287,8 @@ local function tagHandler(requestItem)
   return false, nil
 end
 
--- Domum Ornamentum adds the Architect's Cutter, the player has to manually craft these special blocks
--- Apparently colonists can also make them?
--- FUTURE make option to disable this handler so colonists can make blocks? 
+-- Domum Ornamentum adds the Architect's Cutter, the player has to manually craft these special blocks.
+-- QUESTION: Apparently colonists can also make them?
 local function domumHandler(request)
   local requestDisplayName = request.name
   local requestItem = request.items[1]
@@ -392,23 +320,27 @@ local function domumHandler(request)
   end
 end
 
+-- QUESTION: handle prints to terminal, monitor, log, chatbox, rednet?
 local function messageHandler()
-  --handle prints to terminal, monitor, log, chatbox, rednet?
+  -- todo
 end
 
+-- QUESTION: Make this handle ae2 crafts better? If craft started or if it's missing ingredients?
+-- https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#objects
 local function craftHandler(request, bridgeItem, bridge)
   local craftable = nil
   local payload = {}
   local ok, object = nil, nil
-  local fingerprint = bridgeItem and bridgeItem.fingerprint
+  local fingerprintBridge = bridgeItem and bridgeItem.fingerprint
+  local fingerprintRequest = request.items[1].fingerprint
   local name = request.items[1].name
   local maxStackSize = request.items[1].maxStackSize
   local stackSize = (craftMaxStack and maxStackSize) or request.count
 
   if stackSize == 0 then stackSize = 1 end
-  if fingerprint then
-    craftable = bridge.isCraftable({fingerprint = fingerprint, count = stackSize})
-    payload = {fingerprint = fingerprint, count = stackSize}
+  if fingerprintBridge then
+    craftable = bridge.isCraftable({fingerprint = fingerprintBridge, count = stackSize})
+    payload = {fingerprint = fingerprintBridge, count = stackSize}
   elseif name then
     craftable = bridge.isCraftable({name = name, components = {}, count = stackSize})
     payload = {name = name, count = stackSize, components = {}}
@@ -418,24 +350,17 @@ local function craftHandler(request, bridgeItem, bridge)
     if object.isCraftingStarted() then
       logAndDisplay(string.format("[CRAFT] x%d - %s", stackSize, name))
     else
-      logAndDisplay(string.format("[ERROR] Crafting Recipe x%d - %s [%s]", stackSize, name, fingerprint))
+      logAndDisplay(string.format("[ERROR] Crafting Recipe x%d - %s [%s]", stackSize, name, fingerprintBridge or fingerprintRequest))
     end
   else
-    logAndDisplay(string.format("[MISSING] No Recipe x%d - %s [%s]", stackSize, name, request.items[1].fingerprint))
+    logAndDisplay(string.format("[MISSING] No Recipe x%d - %s [%s]", stackSize, name, fingerprintBridge or fingerprintRequest))
   end
   return object
 end
 
--- [EVENT HANDLER] ----------------------------------------------------------------------------------------------------
--- THIS DOESN'T DO ANYTHING
-local function eventHandler()
-  local event, error, id, message = os.pullEvent("me_crafting")
-  print(event, error, id, message)
-end
-
 -- [MAIN HANDLER] -----------------------------------------------------------------------------------------------------
 -- This is the main item exporting logic, decision making.
--- 1: First check for blacklisted tags like c:foods, then if specific food items are whitelisted before skipped export.
+-- 1: First check for blacklisted tags like c:foods, then if specific food items are whitelisted before skipping export.
 -- 2: Check for tool/armour request, then substitue. ie Mekanism boots get requested, replace with leather boots.
 -- 3. Exact fingerprint match, export full requested item count.
 -- 4. Exact fingerprint match, not enough items. Try to autocraft if an AE2 pattern exists.
@@ -445,6 +370,10 @@ local function mainHandler(bridge, colony)
   local colonyRequests = colonyRequestHandler(colony, bridge)
   local fallbackCache = {}
   local indexFingerprint = bridgeDataHandler(bridge)
+  if not colonyRequests then
+    logAndDisplay(string.format("[INFO] No colony requests detected!"))
+    return
+  end
   for _, request in ipairs(colonyRequests) do
     local requestCount = request.count or 0
     local requestItem = request.items[1]
@@ -500,8 +429,7 @@ local function mainHandler(bridge, colony)
           local craftObject = craftHandler(request, bridgeItem, bridge)
         else
           local craftObject = craftHandler(request, bridgeItem, bridge)
-          -- watch for craft events maybe??
-          -- https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#crafting-job
+          -- QUESTION: Watch for craft events maybe? https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#crafting-job
         end
       -- [CASE 5] No fingerprint match. Note items with a crafting pattern but count 0 also have no fingerprint.
       else
@@ -520,7 +448,7 @@ local title = string.format("[INFO] %s v%.1f initialized", scriptName, scriptVer
 print(title)
 logLine(title)
 
-function main()
+local function main()
   while true do
     exportBuffer = {}
     monitorLines = {}
