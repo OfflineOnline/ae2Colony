@@ -16,7 +16,7 @@ At some point I'll probably abandon this script, so if you want to use it and ma
 - If items don't seem to autocraft or hang, they maybe missing items. If it wants 100 chests but can only make 10, it won't make any!
 
 # Tips
-- By default C:foods tags is blacklisted, then we whitelist certain foods like minecraft:carrot or minecraft:beef for the Hospitals or Resturants to cook
+- By default C:foods tags is blacklisted, then we whitelist certain foods like minecraft:carrot or minecraft:beef for the Hospitals or Resturants to cook.
 - Be careful with tag blacklists and item whitelists, it's possible to loose important info like Hospitals wanting carrots or potatoes for healing
 - If something is weird, check the log file or read the script for comments/hints. It's easier to read in a text editor, don't try to read in game!
 
