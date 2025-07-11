@@ -347,13 +347,13 @@ local function craftHandler(request, bridgeItem, bridge)
   end
   if craftable then
     ok, object = pcall(function() return bridge.craftItem(payload) end)
-    if object.isCraftingStarted() then
-      logAndDisplay(string.format("[CRAFT] x%d - %s", stackSize, name))
+    if ok then
+      logAndDisplay(string.format("[CRAFT] x%d - %s [%s]", stackSize, name, fingerprintRequest))
     else
-      logAndDisplay(string.format("[ERROR] Crafting Recipe x%d - %s [%s]", stackSize, name, fingerprintBridge or fingerprintRequest))
+      logAndDisplay(string.format("[ERROR] Failed crafting: x%d - %s [%s]", stackSize, name, fingerprintBridge or fingerprintRequest or "Not Available"))
     end
   else
-    logAndDisplay(string.format("[MISSING] No Recipe x%d - %s [%s]", stackSize, name, fingerprintBridge or fingerprintRequest))
+    logAndDisplay(string.format("[MISSING] No recipe x%d - %s [%s]", stackSize, name, fingerprintBridge or fingerprintRequest or "Not Available"))
   end
   return object
 end
@@ -402,7 +402,7 @@ local function mainHandler(bridge, colony)
           end
         end
       -- [CASE 2] Matched keyword for tool or armour
-      elseif fallbackItem then
+      elseif fallbackItem then                                -- something like minecraft:wooden_sword
         local inStock = fallbackCache[fallbackItem]
         if not inStock then
           inStock = bridge.getItem({name = fallbackItem, count = requestCount, components = {}})
@@ -414,8 +414,11 @@ local function mainHandler(bridge, colony)
         if inStock and inStock.count >= requestCount and not hasNBT  then
           queueExport(nil, requestCount, fallbackItem, requestTarget)
         else
+          -- Crude swapping of request data, it contains both fallbackItem data as well as the original requested item.
           request.items[1].name = fallbackItem
-          local craftObject = craftHandler(request, bridgeItem, bridge)
+          request.items[1].fingerprint = inStock.fingerprint or nil
+          request.count = requestCount
+          local craftObject = craftHandler(request, nil, bridge)
         end
       -- [CASE 3] Bridge fingerprint match, and has enough items.
       -- [CASE 4] Bridge fingerprint match, but items equal or less. We craft if equal because fast fingerprints only work if items >0
