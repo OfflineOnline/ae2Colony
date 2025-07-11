@@ -5,6 +5,10 @@ A CC:Tweaked lua script that sends AE2 items to Minecolonies
 
 At some point I'll probably abandon this script, so if you want to use it and make upgrades, go for it! Please send me a link so I can maybe use it in the future.
 
+# Original Design Idea
+- Advanced Peripherals adds a cool in-game command "/advancedperipherals getHashItem" that returns an exact "fingerprint" of an item, enchants/ durability etc.
+- The idea is it makes it very nice for exporting the EXACT item from AE2. I've since just kept adding stuff, so it's kinda messy...
+
 # Setup
 1. This script was written while playing ATM10 v4.2, it requires several mods from that modpack. CC:Tweaked, Advanced Peripherals, Minecolonies, AE2.
 2. The Advanced Peripherals(AP) mod goes through frequent updates, there is a significant chance this script won't work if the AP version isn't 0.7.51b
