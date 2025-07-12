@@ -473,7 +473,6 @@ local function mainHandler(bridge, colony)
         local craftObject = craftHandler(request, bridgeItem, bridge)
       end
     end
-    
   end
 end
 
