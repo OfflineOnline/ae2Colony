@@ -12,21 +12,22 @@ This script was designed and tested in ATM10 modpack v4.2 with Advanced Peripher
 Older or newer versions of Advanced Peripherals may not work!
 
 Errors
-For errors please see the Github, maybe I can help... There is a list of known errors!
+For errors please see the Github, maybe I can help..!
 ---------------------------------------------------------------------------------------------------------------------]]
 
 -- [USER CONFIG] ------------------------------------------------------------------------------------------------------
 local exportSide = "front"
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
-local craftMaxStack = false -- autocraft exact or a stack. ie 3 logs vs 64 logs.
-local fallbackEnable = true -- fallback currently not working, leave false
-local scanInterval = 30
+local craftMaxStack = false -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
+local fallbackEnable = true -- Fallback logic is buggy, doesn't always seem to work...
+local scanInterval = 30 -- Probably shouldn't go much lower than 20s...
+local debugExtra = true -- If true more info printed to log file.
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
 -- blacklistedTags: all items matching the given tags are skipped, they do not export.
 local blacklistedTags = {
-  ["c:foods"] = true,
+  ["c:foods"] = true, -- I've noticed not all foods use tags, like at all! :(
   ["c:tools"] = true,
 }
 
@@ -35,7 +36,7 @@ local blacklistedTags = {
 -- QUESTION: Maybe no food should be whitelisted, the resturant seems to over-request food to cook up, filling warehouse??
 local whitelistItemName = {
   --["minecraft:cod"] = true,
-  --["minecraft:beef"] = true,
+  ["minecraft:beef"] = true,
   ["minecraft:carrot"] = true,
   ["minecraft:potato"] = true,
   ["minecolonies:apple_pie"] = true,
@@ -49,7 +50,7 @@ local fallback = {
   boots      = "minecraft:leather_boots",
   leggings   = "minecraft:leather_leggings",
   helmet     = "minecraft:leather_helmet",
-  --sword      = "minecraft:wooden_sword",  guard seems to insist on gold sword, so it's filling warehouse with wooden_sword
+  --sword      = "minecraft:wooden_sword", one guard insists on gold sword, so it's filling warehouse with wooden_sword
   pickaxe    = "minecraft:wooden_pickaxe",
   axe        = "minecraft:wooden_axe",
   shovel     = "minecraft:wooden_shovel",
@@ -214,9 +215,9 @@ local function processExportBuffer(bridge)
     end)
 
     if not ok or not result then
-      logAndDisplay(string.format("[ERROR] x%d - %s -> %s", item.count, item.name, item.target))
+      logAndDisplay(string.format("[ERROR] x%d %s [%s] > %s", item.count, item.name, item.fingerprint, item.target))
     else
-      logAndDisplay(string.format("[SENT] x%d - %s -> %s", item.count, item.name, item.target))
+      logAndDisplay(string.format("[SENT] x%d %s [%s] > %s", item.count, item.name, item.fingerprint, item.target))
     end
   end
 end
@@ -416,24 +417,34 @@ local function mainHandler(bridge, colony)
       local requestFingerprint = requestItem.fingerprint
       local requestName = requestItem.name
       local bridgeItem = indexFingerprint[requestFingerprint]
+      local debugInfo = requestName or requestFingerprint
 
       -- [CASE 1] Skip tag c:foods by default.
       if isTagBlacklisted then
+        if debugExtra then logLine(string.format("[CASE 1] Tag Blacklisted [%s]", debugInfo)) end
         if whitelistException then
+          if debugExtra then logLine("[CASE 1] Whitelist Exception") end
           local bridgeCount = (bridgeItem and bridgeItem.count) or 0
           local countDelta = bridgeCount - requestCount
           if countDelta > 0 then
+            if debugExtra then logLine("[CASE 1] Whitelist Exception - Export Full") end
             queueExport(requestFingerprint, requestCount, requestName, requestTarget)
           elseif bridgeCount > 0 then
+            if debugExtra then logLine("[CASE 1] Whitelist Exception - Export & Craft") end
             queueExport(requestFingerprint, bridgeCount, requestName, requestTarget)
             local craftObject = craftHandler(request, bridgeItem, bridge)
           else
+            if debugExtra then logLine("[CASE 1] Whitelist Exception - Craft") end
             local craftObject = craftHandler(request, bridgeItem, bridge)
           end
+        else
+          logAndDisplay(string.format("[INFO] Tag blacklist & item not whitelist: x%d %s", requestCount, requestItem.name))
         end
       -- [CASE 2] Matched keyword for tool or armour
       elseif fallbackItem then
+        if debugExtra then logLine(string.format("[CASE 2] Fallback Item [%s]", fallbackItem)) end
         if fallbackEnable then
+          if debugExtra then logLine("[CASE 2] Fallback Enabled - Name Replacing") end
           local inStock = fallbackCache[fallbackItem]
           if not inStock then
             inStock = bridge.getItem({name = fallbackItem, count = requestCount, components = {}})
@@ -443,33 +454,41 @@ local function mainHandler(bridge, colony)
           logAndDisplay(string.format("[INFO] %s instead of %s", fallbackItem, requestName))
           local hasNBT = inStock.components and next(inStock.components)
           if inStock and inStock.count >= requestCount and not hasNBT  then
+            if debugExtra then logLine("[CASE 2] Fallback - Export Basic") end
             queueExport(nil, requestCount, fallbackItem, requestTarget)
           else
             -- Dirty swapping of request data, it contains both fallbackItem data as well as the original requested item.
+            if debugExtra then logLine("[CASE 2] Fallback Item - Export & Craft Basic") end
             request.items[1].name = fallbackItem
             request.items[1].fingerprint = inStock.fingerprint or nil
             request.count = requestCount
             local craftObject = craftHandler(request, nil, bridge)
           end
         else
+          if debugExtra then logLine("[CASE 2] Fallback Disabled") end
           logAndDisplay(string.format("[MANUAL] Fallback logic disabled for: %s", requestName))
         end
       -- [CASE 3] Bridge fingerprint match, and has enough items.
       -- [CASE 4] Bridge fingerprint match, but items equal or less. We craft if equal because fast fingerprints only work if items >0
       elseif bridgeItem then
+        if debugExtra then logLine(string.format("[CASE 3] Bridge Item [%s]", debugInfo)) end
         local bridgeCount = bridgeItem.count or 0
         local countDelta = bridgeCount - requestCount
         if countDelta > 0 then
+          if debugExtra then logLine("[CASE 3] Bridge Item - Export Full") end
           queueExport(requestFingerprint, requestCount, requestName, requestTarget)
         elseif bridgeCount > 0 then
+          if debugExtra then logLine(string.format("[CASE 4] Bridge Item - Export & Craft [%s]", debugInfo)) end
           queueExport(requestFingerprint, bridgeCount, requestName, requestTarget)
           local craftObject = craftHandler(request, bridgeItem, bridge)
         else
+          if debugExtra then logLine("[CASE 4] Bridge Item - Craft") end
           local craftObject = craftHandler(request, bridgeItem, bridge)
           -- QUESTION: Watch for craft events maybe? https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#crafting-job
         end
       -- [CASE 5] No fingerprint match. Note items with a crafting pattern but count 0 also have no fingerprint.
       else
+        if debugExtra then logLine(string.format("[CASE 5] Bridge Item - No Craft, Only Manual[%s]", debugInfo)) end
         local domum = domumHandler(request)
         local craftObject = craftHandler(request, bridgeItem, bridge)
       end
