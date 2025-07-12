@@ -7,7 +7,7 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 
 # Original Design Idea
 - Advanced Peripherals adds a cool in-game command "/advancedperipherals getHashItem" that returns an exact "fingerprint" of an item, enchants/ durability etc.
-- The idea is it makes it very nice for exporting the EXACT item from AE2. I've since just kept adding stuff, so it's kinda messy...
+- Fingerprints seemed like a nice start to have AE2 export the exact item Minecolonies wanted.
 
 # Setup
 - wget https://raw.githubusercontent.com/toastonrye/ae2Colony/refs/heads/main/ae2Colony.lua
@@ -22,18 +22,17 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 - If items don't seem to autocraft or hang, they maybe missing items. If it wants 100 chests but can only make 10, it won't make any!
 
 # Tips
-- By default c:foods tags is blacklisted, then we whitelist certain foods like minecraft:carrot or minecraft:beef for the Hospitals or Resturants to cook.
-- Be careful with tag blacklists and item whitelists, it's possible to loose important info like Hospitals wanting carrots or potatoes for healing
+- By default c:foods tags is blacklisted, then I whitelist certain foods like minecraft:carrot or minecraft:beef for the Hospitals or Resturants to cook.
+- Food, Tools, Armour should eventually be handled by the colonists. This script works best with just building blocks to get started!
 - If something is weird, check the log file or read the script for comments/hints. It's easier to read in a text editor, don't try to read in game!
 
 # Future Features Maybe?
-- I need a second monitor that displays "raw" colonist.getRequests(). It's possible to miss important info like Hospitals wanting potatoes because c:foods is blacklisted.
-- I'd like to make a nicer monitor display
 - I'd like more robost information feedback about AE2 autocrafting status.
 - Add toggle to disable domum ornamenum logic, colonists can apparently craft blocks?
+- I'd like to make a nicer monitor display
 
 # Misc Helper Scripts
-- I updated to scripts that generate a logfile of data for the me bridge and colony integrator. It maybe helpful for tracing bugs related to exporting.
+- Two scripts that generate a logfile of data for the me bridge and colony integrator. They maybe helpful for tracking weird issues...
 
 # Videos
 v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw (This video is old, script is much newer.)
