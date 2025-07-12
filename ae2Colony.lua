@@ -374,6 +374,7 @@ local function craftHandler(request, bridgeItem, bridge)
     craftable = bridge.isCraftable({name = name, components = {}, count = stackSize})
     payload = {name = name, count = stackSize, components = {}}
   end
+  -- Sometimes craftable isn't true when I think it should be, so craftable items miss the first scan. Usually picked up by the second scan.
   if craftable then
     ok, object = pcall(function() return bridge.craftItem(payload) end)
     if ok then
