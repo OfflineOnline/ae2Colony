@@ -22,7 +22,7 @@ local maxLogs = 10
 local craftMaxStack = false -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
 local fallbackEnable = true -- Fallback logic is buggy, doesn't always seem to work...
 local scanInterval = 30 -- Probably shouldn't go much lower than 20s...
-local debugExtra = true -- If true more info printed to log file.
+local debugExtra = false -- If true more info printed to log file.
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
 -- blacklistedTags: all items matching the given tags are skipped, they do not export.
