@@ -7,6 +7,10 @@ https://github.com/toastonrye/ae2Colony/blob/main/README.md
 Setup
 Please see the Github for more detailed information!
 
+Warning
+This script was designed and tested in ATM10 modpack v4.2 with Advanced Peripherals 0.7.51b
+Older or newer versions of Advanced Peripherals may not work!
+
 Errors
 For errors please see the Github, maybe I can help... There is a list of known errors!
 ---------------------------------------------------------------------------------------------------------------------]]
@@ -114,7 +118,7 @@ end
 
 local function updateMonitorGrouped(monitor)
   if not monitor then return end
-  
+
   monitor.setTextScale(0.5)
   monitor.clear()
   local colorsMap = {
