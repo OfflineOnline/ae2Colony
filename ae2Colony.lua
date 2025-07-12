@@ -94,16 +94,22 @@ local function setupMonitor()
   return monitor
 end
 
-local function drawProgressBar(monitor, secondsLeft, totalSeconds)
+local function drawProgressBar(monitor, secondsLeft, totalSeconds, paused)
   if not monitor then return end
   local width, _ = monitor.getSize()
   local filled = math.floor((secondsLeft / totalSeconds) * width)
-  monitor.setCursorPos(1, 1)
-  monitor.setTextColor(colors.gray)
-  monitor.write(string.rep("-", width))
-  monitor.setCursorPos(1, 1)
-  monitor.setTextColor(colors.green)
-  monitor.write(string.rep("#", filled))
+  if paused then
+    monitor.setCursorPos(1, 2)
+    monitor.setTextColor(colors.red)
+    monitor.write(string.rep("#", width))
+  else
+    monitor.setCursorPos(1, 2)
+    monitor.setTextColor(colors.gray)
+    monitor.write(string.rep("-", width))
+    monitor.setCursorPos(1, 2)
+    monitor.setTextColor(colors.green)
+    monitor.write(string.rep("#", filled))
+  end
 end
 
 local function updateMonitorGrouped(monitor)
@@ -119,7 +125,6 @@ local function updateMonitorGrouped(monitor)
     MANUAL = colors.cyan,
     INFO = colors.yellow,
   }
-
 
   local groups = {
     ["CRAFT"] = {},
@@ -140,7 +145,7 @@ local function updateMonitorGrouped(monitor)
   end
 
   local _, yMax = monitor.getSize()
-  local y = 2
+  local y = 3
   for label, entries in pairs(groups) do
     if #entries > 0 then
       if y > yMax then return end
@@ -177,10 +182,9 @@ end
 
 local function confirmConnection(bridge)
   if bridge.isOnline() then
-    return
-  else
-      error("ae2 bridge offline")
+    return true
   end
+  return false
 end
 
 -- [UTILS] ------------------------------------------------------------------------------------------------------------
@@ -229,6 +233,42 @@ local function bridgeDataHandler(bridge)
   end
   return indexFingerprint
 end
+
+local function updateHeader(monitor, bridge)
+  if not monitor then return end
+
+  local width = monitor.getSize()
+  local headerText = string.format("%s v%s", scriptName, scriptVersion)
+  local statusText = "AE2 Status"
+  local statusX = width - #statusText + 1
+
+  while true do
+    monitor.setCursorPos(1, 1)
+    monitor.setTextColor(colors.orange)
+    monitor.write(headerText)
+
+    local status = confirmConnection(bridge)
+    monitor.setCursorPos(statusX, 1)
+    monitor.setTextColor(status and colors.lime or colors.red)
+    monitor.write(statusText)
+
+    local i = scanInterval
+    while i > 0 do
+      local stillConnected = confirmConnection(bridge)
+      monitor.setCursorPos(statusX, 1)
+      monitor.setTextColor(stillConnected and colors.lime or colors.red)
+      monitor.write(statusText)
+
+      drawProgressBar(monitor, i, scanInterval, not stillConnected)
+      if stillConnected then
+        i = i - 1
+      end
+
+      os.sleep(1)
+    end
+  end
+end
+
 
 local function colonyRequestHandler(colony, bridge)
   local ok, result = pcall(function()
@@ -416,7 +456,7 @@ local function mainHandler(bridge, colony)
           if inStock and inStock.count >= requestCount and not hasNBT  then
             queueExport(nil, requestCount, fallbackItem, requestTarget)
           else
-            -- Crude swapping of request data, it contains both fallbackItem data as well as the original requested item.
+            -- Dirty swapping of request data, it contains both fallbackItem data as well as the original requested item.
             request.items[1].name = fallbackItem
             request.items[1].fingerprint = inStock.fingerprint or nil
             request.count = requestCount
@@ -460,16 +500,14 @@ local function main()
   while true do
     exportBuffer = {}
     monitorLines = {}
-    confirmConnection(bridge)
     mainHandler(bridge, colony)
     processExportBuffer(bridge)
     updateMonitorGrouped(monitor)
-
-    for i = scanInterval, 1, -1 do
-      drawProgressBar(monitor, i, scanInterval)
-      os.sleep(1)
-    end
+    updateHeader(monitor, bridge)
   end
 end
 
-parallel.waitForAll(main)
+parallel.waitForAll(
+  main
+  --function() return updateHeader(monitor, bridge) end
+)
