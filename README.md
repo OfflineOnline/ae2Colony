@@ -11,6 +11,7 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 
 # Setup
 - wget https://raw.githubusercontent.com/toastonrye/ae2Colony/refs/heads/main/ae2Colony.lua
+0. Video guide, it's long but setup is in the first ~10 mins or so. https://www.youtube.com/watch?v=bRNkBSM9rm4
 1. This script was written while playing ATM10 v4.2, it requires several mods from that modpack. CC:Tweaked, Advanced Peripherals, Minecolonies, AE2.
 2. The Advanced Peripherals(AP) mod goes through frequent updates, there is a significant chance this script won't work if the AP version isn't 0.7.51b
 3. You need to understand how to setup AE2 autocrafting systems, and have a general idea how Minecolonies works.
@@ -35,4 +36,5 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 - Two scripts that generate a logfile of data for the me bridge and colony integrator. They maybe helpful for tracking weird issues...
 
 # Videos
+v0.3 Setup & Quirks https://www.youtube.com/watch?v=bRNkBSM9rm4 - July 12'2025
 v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw (This video is old, script is much newer.)
