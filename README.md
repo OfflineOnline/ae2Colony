@@ -3,7 +3,7 @@
 # ae2Colony
 A CC:Tweaked lua script that sends AE2 items to Minecolonies
 
-At some point I'll probably abandon this script, so if you want to use it and make upgrades, go for it! Please send me a link so I can maybe use it in the future.
+I expect to abandon this script at some point, if you want to make upgrades/changes feel free to comment somewhere here on the Github. I'd like to see it!
 
 # Original Design Idea
 - Advanced Peripherals adds a cool in-game command "/advancedperipherals getHashItem" that returns an exact "fingerprint" of an item, enchants/ durability etc.
@@ -18,7 +18,6 @@ At some point I'll probably abandon this script, so if you want to use it and ma
 
 # Known Issues
 - In Advanced Peripherals(AP) 0.7.51b, for the colony integrator, getRequests() seems to crash if a colonist is missing some tools/armour.
-- I've crudely tried to handle the error, but the AP mod dev knows and I believe it's been fixed fixed for newer AP versions
 - I've tried to prevent enchanted tools and armour from exporting. The script isn't designed to handle better tiers of gear. Manually give your colonists better gear.
 - If items don't seem to autocraft or hang, they maybe missing items. If it wants 100 chests but can only make 10, it won't make any!
 
@@ -32,6 +31,9 @@ At some point I'll probably abandon this script, so if you want to use it and ma
 - I'd like to make a nicer monitor display
 - I'd like more robost information feedback about AE2 autocrafting status.
 - Add toggle to disable domum ornamenum logic, colonists can apparently craft blocks?
+
+# Misc Helper Scripts
+- I updated to scripts that generate a logfile of data for the me bridge and colony integrator. It maybe helpful for tracing bugs related to exporting.
 
 # Videos
 v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw (This video is old, script is much newer.)
