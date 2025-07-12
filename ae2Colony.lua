@@ -114,8 +114,8 @@ end
 
 local function updateMonitorGrouped(monitor)
   if not monitor then return end
-
-  monitor.setTextScale(0.8)
+  
+  monitor.setTextScale(0.5)
   monitor.clear()
   local colorsMap = {
     CRAFT = colors.green,
@@ -234,7 +234,7 @@ local function bridgeDataHandler(bridge)
   return indexFingerprint
 end
 
-local function updateHeader(monitor, bridge)
+local function updateHeader(monitor, bridge, tick)
   if not monitor then return end
 
   local width = monitor.getSize()
@@ -242,33 +242,17 @@ local function updateHeader(monitor, bridge)
   local statusText = "AE2 Status"
   local statusX = width - #statusText + 1
 
-  while true do
-    monitor.setCursorPos(1, 1)
-    monitor.setTextColor(colors.orange)
-    monitor.write(headerText)
+  monitor.setCursorPos(1, 1)
+  monitor.setTextColor(colors.orange)
+  monitor.write(headerText)
 
-    local status = confirmConnection(bridge)
-    monitor.setCursorPos(statusX, 1)
-    monitor.setTextColor(status and colors.lime or colors.red)
-    monitor.write(statusText)
+  local status = confirmConnection(bridge)
+  monitor.setCursorPos(statusX, 1)
+  monitor.setTextColor(status and colors.lime or colors.red)
+  monitor.write(statusText)
 
-    local i = scanInterval
-    while i > 0 do
-      local stillConnected = confirmConnection(bridge)
-      monitor.setCursorPos(statusX, 1)
-      monitor.setTextColor(stillConnected and colors.lime or colors.red)
-      monitor.write(statusText)
-
-      drawProgressBar(monitor, i, scanInterval, not stillConnected)
-      if stillConnected then
-        i = i - 1
-      end
-
-      os.sleep(1)
-    end
-  end
+  drawProgressBar(monitor, tick, scanInterval, not status)
 end
-
 
 local function colonyRequestHandler(colony, bridge)
   local ok, result = pcall(function()
@@ -503,7 +487,11 @@ local function main()
     mainHandler(bridge, colony)
     processExportBuffer(bridge)
     updateMonitorGrouped(monitor)
-    updateHeader(monitor, bridge)
+
+    for i = scanInterval, 1, -1 do
+      updateHeader(monitor, bridge, i)
+      os.sleep(1)
+    end
   end
 end
 
