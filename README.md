@@ -9,7 +9,7 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 - Fingerprints seemed like a nice start to have AE2 export the exact item Minecolonies wanted.
 
 ## Requirements
-1. Advanced Peripehrals 0.7.51b - This is the only version I've tested on as of July 12'2025
+1. **Advanced Peripehrals 0.7.51b** - This is the only version I've tested on as of July 12'2025
 
 ## Setup
  ```wget https://raw.githubusercontent.com/toastonrye/ae2Colony/refs/heads/main/ae2Colony.lua```
