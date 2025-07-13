@@ -6,24 +6,21 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 
 ## Original Design Idea
 - Advanced Peripherals adds a cool in-game command "/advancedperipherals getHashItem" that returns an exact "fingerprint" of an item, enchants/ durability etc.
-- Fingerprints seemed like a nice start to have AE2 export the exact item Minecolonies wanted.
 
 ## Requirements
 1. **Advanced Peripehrals 0.7.51b** - This is the only version I've tested on as of July 12'2025
+2. Post bugs here on the issues page. I'm a hobby programmer so I welcome tips as well!
 
 ## Setup
  ```wget https://raw.githubusercontent.com/toastonrye/ae2Colony/refs/heads/main/ae2Colony.lua```
 
 0. Video guide, it's long but setup is in the first ~10 mins or so. https://www.youtube.com/watch?v=bRNkBSM9rm4
-1. This script was written while playing ATM10 v4.2, it requires several mods from that modpack. CC:Tweaked, Advanced Peripherals, Minecolonies, AE2.
-2. The Advanced Peripherals(AP) mod goes through frequent updates, there is a significant chance this script won't work if the AP version isn't 0.7.51b
-3. You need to understand how to setup AE2 autocrafting systems, and have a general idea how Minecolonies works.
-4. I'm a hobby programmer, it's difficult for me to test for every scenario, but please let me know of any issues and I'll try to help!
+1. Script designed and tested in ATM10 v4.2, it requires several mods from that modpack. CC:Tweaked, Advanced Peripherals, Minecolonies, AE2.
+3. You need to understand how AE2 autocrafting and Minecolonies works. This script is an aid, it can't do everything!
 
 ### Known Issues
 - In Advanced Peripherals(AP) 0.7.51b, for the colony integrator, getRequests() seems to crash if a colonist is missing some tools/armour.
 - If items don't seem to autocraft or hang, they maybe missing items. If it wants 100 chests but can only make 10, it won't make any!
-- If the log file stops working, it might require a singleplayer or server restart. Infrequent bug.
 
 ### Tips
 - By default c:foods tags is blacklisted, then I whitelist certain foods like minecraft:carrot or minecraft:beef for the Hospitals or Resturants to cook.
