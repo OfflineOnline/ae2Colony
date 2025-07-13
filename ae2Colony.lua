@@ -1,5 +1,5 @@
 local scriptName = "AE2 Colony"
-local scriptVersion = 0.3
+local scriptVersion = 0.4
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
 https://github.com/toastonrye/ae2Colony/blob/main/README.md
@@ -17,12 +17,14 @@ For errors please see the Github, maybe I can help..!
 
 -- [USER CONFIG] ------------------------------------------------------------------------------------------------------
 local exportSide = "front"
+local craftMaxStack = false         -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
+local fallbackEnable = true         -- Fallback logic is buggy, doesn't always seem to work...
+local scanInterval = 30             -- Probably shouldn't go much lower than 20s...
+local debugExtra = false            -- If true more info printed to log file.
+local doLog = true                  -- Enable/Disable logging.
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
-local craftMaxStack = false -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
-local fallbackEnable = true -- Fallback logic is buggy, doesn't always seem to work...
-local scanInterval = 30 -- Probably shouldn't go much lower than 20s...
-local debugExtra = false -- If true more info printed to log file.
+local maxLogSize = 100*1024 -- 100 KB
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
 -- blacklistedTags: all items matching the given tags are skipped, they do not export.
@@ -60,19 +62,37 @@ local fallback = {
 -- [LOGGING] ----------------------------------------------------------------------------------------------------------
 if not fs.exists(logFolder) then fs.makeDir(logFolder) end
 
-local function getLocalTime(offsetHours)
-  local utc = os.epoch("utc")
-  return utc + (offsetHours * 3600 * 1000)
-end
+local function getNextLogFile()
+  local files = fs.list(logFolder)
+  table.sort(files)
 
-local function getDateStamp()
-  local t = os.date("*t", getLocalTime(0) / 1000)
-  return string.format("%04d-%02d-%02d", t.year, t.month, t.day)
+  local numbered = {}
+  for _, f in ipairs(files) do
+    local n = f:match("^log_(%d+)%.log$")
+    if n then table.insert(numbered, tonumber(n)) end
+  end
+
+  table.sort(numbered)
+
+  local nextIndex = (numbered[#numbered] or 0) + 1
+  return string.format("%s/log_%03d.log", logFolder, nextIndex)
 end
 
 local function logLine(line)
-  local timestamp = os.date("%H:%M:%S", getLocalTime(0) / 1000)
-  local path = string.format("%s/%s.log", logFolder, getDateStamp())
+  if not doLog then return end
+  local files = fs.list(logFolder)
+  table.sort(files)
+  local path
+  if #files > 0 then
+    local latest = files[#files]
+    path = logFolder .. "/" .. latest
+    if fs.getSize(path) >= maxLogSize then
+      path = getNextLogFile()
+    end
+  else
+    path = getNextLogFile()
+  end
+  local timestamp = os.date("%H:%M:%S", os.epoch("local") / 1000)
   local f = fs.open(path, "a")
   if f then
     f.writeLine(string.format("[%s] %s", timestamp, line))
@@ -82,14 +102,21 @@ end
 
 local function cleanupOldLogs()
   local files = fs.list(logFolder)
-  table.sort(files)
-  while #files > maxLogs do
-    fs.delete(logFolder .. "/" .. table.remove(files, 1))
+  local logFiles = {}
+  for _, f in ipairs(files) do
+    if f:match("^log_%d+%.log$") then
+      table.insert(logFiles, f)
+    end
+  end
+  table.sort(logFiles)
+  while #logFiles > maxLogs do
+    fs.delete(logFolder .. "/" .. table.remove(logFiles, 1))
   end
 end
 
 -- [MONITOR] ----------------------------------------------------------------------------------------------------------
-local monitorLines = {} 
+local monitorLines = {}
+local currentPage, totalPages = 1, 1
 local function setupMonitor()
   local monitor = peripheral.find("monitor")
   if not monitor then return nil end
@@ -99,29 +126,13 @@ local function setupMonitor()
   return monitor
 end
 
-local function drawProgressBar(monitor, secondsLeft, totalSeconds, paused)
-  if not monitor then return end
-  local width, _ = monitor.getSize()
-  local filled = math.floor((secondsLeft / totalSeconds) * width)
-  if paused then
-    monitor.setCursorPos(1, 2)
-    monitor.setTextColor(colors.red)
-    monitor.write(string.rep("#", width))
-  else
-    monitor.setCursorPos(1, 2)
-    monitor.setTextColor(colors.gray)
-    monitor.write(string.rep("-", width))
-    monitor.setCursorPos(1, 2)
-    monitor.setTextColor(colors.green)
-    monitor.write(string.rep("#", filled))
-  end
-end
-
 local function updateMonitorGrouped(monitor)
   if not monitor then return end
 
-  monitor.setTextScale(0.5)
-  monitor.clear()
+  local width, height = monitor.getSize()
+  local maxLines = height - 2
+  local flatLines = {}
+
   local colorsMap = {
     CRAFT = colors.green,
     SENT = colors.lime,
@@ -132,10 +143,10 @@ local function updateMonitorGrouped(monitor)
   }
 
   local groups = {
-    ["CRAFT"] = {},
-    ["SENT"] = {},
     ["ERROR"] = {},
     ["MISSING"] = {},
+    ["CRAFT"] = {},
+    ["SENT"] = {},
     ["MANUAL"] = {},
     ["INFO"] = {},
   }
@@ -149,25 +160,34 @@ local function updateMonitorGrouped(monitor)
     end
   end
 
-  local _, yMax = monitor.getSize()
-  local y = 3
   for label, entries in pairs(groups) do
     if #entries > 0 then
-      if y > yMax then return end
-      monitor.setCursorPos(1, y)
-      monitor.setTextColor(colors.white)
-      monitor.write("== " .. label .. " ==")
-      y = y + 1
+      table.insert(flatLines, {text = "== " .. label .. " ==", color = colors.white})
       for _, entry in ipairs(entries) do
-        if y > yMax then return end
-        monitor.setCursorPos(1, y)
-        monitor.setTextColor(colorsMap[label] or colors.white)
-        monitor.write(entry:sub(1, monitor.getSize()))
-        y = y + 1
+        table.insert(flatLines, {text = entry, color = colorsMap[label] or colors.white})
       end
     end
   end
+
+  totalPages = math.ceil(#flatLines / maxLines)
+  if currentPage > totalPages then currentPage = 1 end
+  local startLine = (currentPage - 1) * maxLines + 1
+  local endLine = math.min(startLine + maxLines - 1, #flatLines)
+
+  for y = 3, height do
+    monitor.setCursorPos(1, y)
+    monitor.write(string.rep(" ", width))
+  end
+
+  local y = 3
+  for i = startLine, endLine do
+    monitor.setCursorPos(1, y)
+    monitor.setTextColor(flatLines[i].color)
+    monitor.write(flatLines[i].text:sub(1, width))
+    y = y + 1
+  end
 end
+
 
 local function logAndDisplay(msg)
   logLine(msg)
@@ -242,24 +262,50 @@ end
 local function updateHeader(monitor, bridge, tick)
   if not monitor then return end
 
-  local width = monitor.getSize()
+  local width, _ = monitor.getSize()
   local headerText = string.format("%s v%s", scriptName, scriptVersion)
-  local statusText = "AE2 Status"
+
+
+  local status = confirmConnection(bridge)
+  local statusText = status and "AE2 ONLINE" or "AE2 OFFLINE"
   local statusX = width - #statusText + 1
 
   monitor.setCursorPos(1, 1)
   monitor.setTextColor(colors.orange)
+  monitor.write(string.rep(" ", width))
+  monitor.setCursorPos(1, 1)
   monitor.write(headerText)
 
-  local status = confirmConnection(bridge)
+  monitor.setCursorPos(#headerText+3, 1)
+  monitor.setTextColor(colors.lightBlue)
+  monitor.write(string.format("Page %d of %d (right-click)", currentPage, totalPages))
+
   monitor.setCursorPos(statusX, 1)
   monitor.setTextColor(status and colors.lime or colors.red)
   monitor.write(statusText)
 
-  drawProgressBar(monitor, tick, scanInterval, not status)
+  monitor.setCursorPos(1, 2)
+  monitor.setTextColor(colors.gray)
+  monitor.write(string.rep("-", width))
+
+  local filled = math.floor((tick / scanInterval) * width)
+  monitor.setCursorPos(1, 2)
+  monitor.setTextColor(status and colors.green or colors.red)
+  monitor.write(string.rep("#", filled))
 end
 
-local function colonyRequestHandler(colony, bridge)
+local function handleMonitorTouch(monitor)
+  while true do
+    local event, side, x, y = os.pullEvent("monitor_touch")
+    if side == peripheral.getName(monitor) then
+      currentPage = currentPage + 1
+      if currentPage > totalPages then currentPage = 1 end
+      updateMonitorGrouped(monitor)
+    end
+  end
+end
+
+local function colonyRequestHandler(colony)
   local ok, result = pcall(function()
     return colony.getRequests()
   end)
@@ -398,7 +444,7 @@ end
 -- 5. No fingerprint match, try to autocraft by item name. Crafting patterns with item count 0 return no fingerprint, fyi.
 -- 6. If step 4/5 can't autocraft items, the player must manually do it.
 local function mainHandler(bridge, colony)
-  local colonyRequests = colonyRequestHandler(colony, bridge)
+  local colonyRequests = colonyRequestHandler(colony)
   local fallbackCache = {}
   local indexFingerprint = bridgeDataHandler(bridge)
   if not colonyRequests then
@@ -438,7 +484,7 @@ local function mainHandler(bridge, colony)
             local craftObject = craftHandler(request, bridgeItem, bridge)
           end
         else
-          logAndDisplay(string.format("[INFO] Tag blacklist & item not whitelist: x%d %s", requestCount, requestItem.name))
+          logAndDisplay(string.format("[INFO] Tag blacklist & item not whitelist. Skipping x%d %s", requestCount, requestItem.name))
         end
       -- [CASE 2] Matched keyword for tool or armour
       elseif fallbackItem then
@@ -452,7 +498,7 @@ local function mainHandler(bridge, colony)
           end
 
           logAndDisplay(string.format("[INFO] %s instead of %s", fallbackItem, requestName))
-          local hasNBT = inStock.components and next(inStock.components)
+          local hasNBT = inStock and inStock.components and next(inStock.components)
           if inStock and inStock.count >= requestCount and not hasNBT  then
             if debugExtra then logLine("[CASE 2] Fallback - Export Basic") end
             queueExport(nil, requestCount, fallbackItem, requestTarget)
@@ -460,7 +506,7 @@ local function mainHandler(bridge, colony)
             -- Dirty swapping of request data, it contains both fallbackItem data as well as the original requested item.
             if debugExtra then logLine("[CASE 2] Fallback Item - Export & Craft Basic") end
             request.items[1].name = fallbackItem
-            request.items[1].fingerprint = inStock.fingerprint or nil
+            request.items[1].fingerprint = inStock and inStock.fingerprint or nil
             request.count = requestCount
             local craftObject = craftHandler(request, nil, bridge)
           end
@@ -504,6 +550,7 @@ print(title)
 logLine(title)
 
 local function main()
+  local tick = scanInterval
   while true do
     exportBuffer = {}
     monitorLines = {}
@@ -511,14 +558,19 @@ local function main()
     processExportBuffer(bridge)
     updateMonitorGrouped(monitor)
 
-    for i = scanInterval, 1, -1 do
-      updateHeader(monitor, bridge, i)
+    while tick > 0 do
+      local online = confirmConnection(bridge)
+      if online then
+        tick = tick - 1
+      end
+      updateHeader(monitor, bridge, tick)
       os.sleep(1)
     end
+    tick = scanInterval
   end
 end
 
 parallel.waitForAll(
-  main
-  --function() return updateHeader(monitor, bridge) end
+  main,
+  function() handleMonitorTouch(monitor) end
 )
