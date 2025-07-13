@@ -21,6 +21,7 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 - In Advanced Peripherals(AP) 0.7.51b, for the colony integrator, getRequests() seems to crash if a colonist is missing some tools/armour.
 - I've tried to prevent enchanted tools and armour from exporting. The script isn't designed to handle better tiers of gear. Manually give your colonists better gear.
 - If items don't seem to autocraft or hang, they maybe missing items. If it wants 100 chests but can only make 10, it won't make any!
+- If the log file stops working, it might require a singleplayer or server restart. Infrequent bug.
 
 # Tips
 - By default c:foods tags is blacklisted, then I whitelist certain foods like minecraft:carrot or minecraft:beef for the Hospitals or Resturants to cook.
