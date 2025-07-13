@@ -13,24 +13,27 @@ Older or newer versions of Advanced Peripherals may not work!
 
 Errors
 For errors please see the Github, maybe I can help..!
+
+Credits
+Chezlordgaming - Contributions to tools & armour tier logic!
+Srendi - Advanced Peripherals dev, fast support for bug troubleshooting!
 ---------------------------------------------------------------------------------------------------------------------]]
 
 -- [USER CONFIG] ------------------------------------------------------------------------------------------------------
 local exportSide = "front"
 local craftMaxStack = false         -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
-local fallbackEnable = true         -- Fallback logic is buggy, doesn't always seem to work...
 local scanInterval = 30             -- Probably shouldn't go much lower than 20s...
 local debugExtra = false            -- If true more info printed to log file.
-local doLog = true                  -- Enable/Disable logging.
+local doLog = false                 -- Leave false unless you have issues. Kinda spammy!
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
-local maxLogSize = 100*1024 -- 100 KB
+local maxLogSize = 200*1024 -- 100 KB
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
 -- blacklistedTags: all items matching the given tags are skipped, they do not export.
 local blacklistedTags = {
   ["c:foods"] = true, -- I've noticed not all foods use tags, like at all! :(
-  ["c:tools"] = true,
+  --["c:tools"] = true,
 }
 
 -- whitelistItemName: specific item names can be whitelisted.
@@ -45,18 +48,30 @@ local whitelistItemName = {
 }
 
 -- [TOOLS & ARMOUR LOOKUPS]----------------------------------------------------------------------------------------------------
--- Future scripts might have tiers for tools/armours, but for now c:tools is blacklisted.
 -- QUESTION: It maybe better to just have colonists make tools and armour?
-local fallback = {
-  chestplate = "minecraft:leather_chestplate",
-  boots      = "minecraft:leather_boots",
-  leggings   = "minecraft:leather_leggings",
-  helmet     = "minecraft:leather_helmet",
-  --sword      = "minecraft:wooden_sword", one guard insists on gold sword, so it's filling warehouse with wooden_sword
-  pickaxe    = "minecraft:wooden_pickaxe",
-  axe        = "minecraft:wooden_axe",
-  shovel     = "minecraft:wooden_shovel",
-  hoe        = "minecraft:wooden_hoe"
+-- gearNameHandler() replaces '$' with gold/diamond etc.
+local gearTypes = {
+  chestplate = "$_chestplate",
+  boots      = "$_boots",
+  leggings   = "$_leggings",
+  helmet     = "$_helmet",
+  sword      = "$_sword",
+  pickaxe    = "$_pickaxe",
+  axe        = "$_axe",
+  shovel     = "$_shovel",
+  hoe        = "$_hoe",
+  shield     = "minecraft:shield",
+  bow        = "minecraft:bow",
+}
+
+local gearMaterials = {
+  wooden = "minecraft:wooden",
+  leather = "minecraft:leather",
+  stone = "minecraft:stone",
+  chain = "minecraft:chainmail",
+  iron = "minecraft:iron",
+  golden = "minecraft:golden",
+  diamond = "minecraft:diamond",
 }
 
 -- [LOGGING] ----------------------------------------------------------------------------------------------------------
@@ -188,7 +203,6 @@ local function updateMonitorGrouped(monitor)
   end
 end
 
-
 local function logAndDisplay(msg)
   logLine(msg)
   table.insert(monitorLines, msg)
@@ -233,7 +247,6 @@ local function processExportBuffer(bridge)
         components = {}
       }, exportSide)
     end)
-
     if not ok or not result then
       logAndDisplay(string.format("[ERROR] x%d %s [%s] > %s", item.count, item.name, item.fingerprint, item.target))
     else
@@ -264,8 +277,6 @@ local function updateHeader(monitor, bridge, tick)
 
   local width, _ = monitor.getSize()
   local headerText = string.format("%s v%s", scriptName, scriptVersion)
-
-
   local status = confirmConnection(bridge)
   local statusText = status and "AE2 ONLINE" or "AE2 OFFLINE"
   local statusX = width - #statusText + 1
@@ -330,18 +341,30 @@ local function colonyRequestHandler(colony)
   end
 end
 
--- QUESTION: If desc mentions max/min tiers for gear, more complex fallback list?
-local function keywordHandler(request)
-  local keywords = {"chestplate", "boots", "leggings", "helmet", "sword", "shovel", "pickaxe", "axe", "hoe"}
-    local label = string.lower(request.name or "")
-    --local desc = request.desc or "
-    for _, word in ipairs(keywords) do
-      local pattern = "%f[%a]" .. word .. "%f[%A]"
-      if string.find(label, pattern) then
-        return fallback[word]
-      end
+-- [CHEZ GEAR TIER LOOKUP]
+-- This function builds from the gearTypes and gearMaterials tables.
+local function gearNameHandler(request)
+  local requestName = request and request.items[1] and request.items[1].name
+  if requestName == "minecraft:bow" or requestName == "minecraft:shield" then
+    return requestName
+  end
+  local gear = string.lower(request.name or "")
+  local desc = string.lower(request.desc or "")
+  local maxLevel = string.match(desc, "maximal level:%s*(%w+)")
+  if not maxLevel then return nil end
+  local gearType = nil
+  for key in pairs(gearTypes) do
+    if gear:find(key) then
+      gearType = gearTypes[key]
+      break
     end
-    return nil
+  end
+  local gearMaterial = gearMaterials[maxLevel]
+  if gearType and gearMaterial then
+    local gearName = gearType:gsub("%$", gearMaterial)
+    return gearName
+  end
+  return nil
 end
 
 -- See blacklisted tags and whitelisted items table at top of script.
@@ -401,7 +424,7 @@ local function messageHandler()
   -- todo
 end
 
--- QUESTION: Make this handle ae2 crafts better? If craft started or if it's missing ingredients?
+-- Tries to craft by fingerprint first, if nil it tries by name. Fingerprint is the best match!
 -- https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#objects
 local function craftHandler(request, bridgeItem, bridge)
   local craftable = nil
@@ -421,7 +444,8 @@ local function craftHandler(request, bridgeItem, bridge)
     craftable = bridge.isCraftable({name = name, components = {}, count = stackSize})
     payload = {name = name, count = stackSize, components = {}}
   end
-  -- Sometimes craftable isn't true when I think it should be, so craftable items miss the first scan. Usually picked up by the second scan.
+  -- Sometimes craftable isn't true when I think it should be, so craftable items miss the first scan.
+  -- QUESTION: I need to learn more about AE2 crafting object events, because this seems a bit buggy. Next scan usually works!
   if craftable then
     ok, object = pcall(function() return bridge.craftItem(payload) end)
     if ok then
@@ -436,13 +460,12 @@ local function craftHandler(request, bridgeItem, bridge)
 end
 
 -- [MAIN HANDLER] -----------------------------------------------------------------------------------------------------
--- This is the main item exporting logic, decision making.
--- 1: First check for blacklisted tags like c:foods, then if specific food items are whitelisted before skipping export.
--- 2: Check for tool/armour request, then substitue. ie Mekanism boots get requested, replace with leather boots.
--- 3. Exact fingerprint match, export full requested item count.
--- 4. Exact fingerprint match, not enough items. Try to autocraft if an AE2 pattern exists.
--- 5. No fingerprint match, try to autocraft by item name. Crafting patterns with item count 0 return no fingerprint, fyi.
--- 6. If step 4/5 can't autocraft items, the player must manually do it.
+-- QUESTION: Watch for craft events maybe? https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#crafting-job
+-- This is the main item exporting logic, eventually your colonists should be making foods, tools, domum ornamentum blocks, etc.
+-- Case 1: First check for blacklisted tags like c:foods, then if specific food items are whitelisted before skipping export.
+-- Case 2: Check for tool/armour requests, lookup material and export or craft is possible. Only non-enchanted gear.
+-- Case 3. Export full requested item count, or craft if AE2 pattern exists. Export next scan cycle.
+-- Case 4. No items available to export or crafting pattern to make. Make a pattern or do it manually. Or have your colonists do it.
 local function mainHandler(bridge, colony)
   local colonyRequests = colonyRequestHandler(colony)
   local fallbackCache = {}
@@ -457,7 +480,7 @@ local function mainHandler(bridge, colony)
     local requestTarget = request.target or request.name or "Unknown Target"
 
     local isTagBlacklisted, whitelistException = tagHandler(requestItem)
-    local fallbackItem = keywordHandler(request)
+    local gearName = gearNameHandler(request)
 
     if requestItem then
       local requestFingerprint = requestItem.fingerprint
@@ -465,7 +488,7 @@ local function mainHandler(bridge, colony)
       local bridgeItem = indexFingerprint[requestFingerprint]
       local debugInfo = requestName or requestFingerprint
 
-      -- [CASE 1] Skip tag c:foods by default.
+      -- [CASE 1] Skip tag c:foods by default. Eventually your colonists should farm and cook meals!
       if isTagBlacklisted then
         if debugExtra then logLine(string.format("[CASE 1] Tag Blacklisted [%s]", debugInfo)) end
         if whitelistException then
@@ -486,36 +509,28 @@ local function mainHandler(bridge, colony)
         else
           logAndDisplay(string.format("[INFO] Tag blacklist & item not whitelist. Skipping x%d %s", requestCount, requestItem.name))
         end
-      -- [CASE 2] Matched keyword for tool or armour
-      elseif fallbackItem then
-        if debugExtra then logLine(string.format("[CASE 2] Fallback Item [%s]", fallbackItem)) end
-        if fallbackEnable then
-          if debugExtra then logLine("[CASE 2] Fallback Enabled - Name Replacing") end
-          local inStock = fallbackCache[fallbackItem]
-          if not inStock then
-            inStock = bridge.getItem({name = fallbackItem, count = requestCount, components = {}})
-            fallbackCache[fallbackItem] = inStock
-          end
-
-          logAndDisplay(string.format("[INFO] %s instead of %s", fallbackItem, requestName))
-          local hasNBT = inStock and inStock.components and next(inStock.components)
-          if inStock and inStock.count >= requestCount and not hasNBT  then
-            if debugExtra then logLine("[CASE 2] Fallback - Export Basic") end
-            queueExport(nil, requestCount, fallbackItem, requestTarget)
-          else
-            -- Dirty swapping of request data, it contains both fallbackItem data as well as the original requested item.
-            if debugExtra then logLine("[CASE 2] Fallback Item - Export & Craft Basic") end
-            request.items[1].name = fallbackItem
-            request.items[1].fingerprint = inStock and inStock.fingerprint or nil
-            request.count = requestCount
-            local craftObject = craftHandler(request, nil, bridge)
-          end
+      -- [CASE 2] Matched keyword for tool or armour, try to export the max tiered material. Only non-enchanted.
+      elseif gearName then
+        if debugExtra then logLine(string.format("[CASE 2] Gear Lookup [%s]", gearName)) end
+        local gearStock = bridge.getItem({name = gearName, count = requestCount, components = {}})
+        if gearStock and gearStock.count > 0 then
+          if debugExtra then logLine("[CASE 2] Gear In Stock: %s", gearName) end
+          queueExport(nil, requestCount, gearName, requestTarget)
         else
-          if debugExtra then logLine("[CASE 2] Fallback Disabled") end
-          logAndDisplay(string.format("[MANUAL] Fallback logic disabled for: %s", requestName))
+          local simpleRequest = {
+            count = requestCount,
+            target = requestTarget,
+            items = {
+              {
+                maxStackSize = requestItem.maxStackSize,
+                name = gearName,
+                components = {}
+              }
+            }
+          }
+          local craftObject = craftHandler(simpleRequest, nil, bridge)
         end
-      -- [CASE 3] Bridge fingerprint match, and has enough items.
-      -- [CASE 4] Bridge fingerprint match, but items equal or less. We craft if equal because fast fingerprints only work if items >0
+    -- [CASE 3] Export if items are available, or export partial and craft. Crafted items get exported next scan.
       elseif bridgeItem then
         if debugExtra then logLine(string.format("[CASE 3] Bridge Item [%s]", debugInfo)) end
         local bridgeCount = bridgeItem.count or 0
@@ -524,17 +539,17 @@ local function mainHandler(bridge, colony)
           if debugExtra then logLine("[CASE 3] Bridge Item - Export Full") end
           queueExport(requestFingerprint, requestCount, requestName, requestTarget)
         elseif bridgeCount > 0 then
-          if debugExtra then logLine(string.format("[CASE 4] Bridge Item - Export & Craft [%s]", debugInfo)) end
+          if debugExtra then logLine(string.format("[CASE 3] Bridge Item - Export & Craft [%s]", debugInfo)) end
           queueExport(requestFingerprint, bridgeCount, requestName, requestTarget)
           local craftObject = craftHandler(request, bridgeItem, bridge)
         else
-          if debugExtra then logLine("[CASE 4] Bridge Item - Craft") end
+          if debugExtra then logLine("[CASE 3] Bridge Item - Craft") end
           local craftObject = craftHandler(request, bridgeItem, bridge)
-          -- QUESTION: Watch for craft events maybe? https://docs.advanced-peripherals.de/latest/guides/storage_system_functions/#crafting-job
         end
-      -- [CASE 5] No fingerprint match. Note items with a crafting pattern but count 0 also have no fingerprint.
+      -- [CASE 4] These items are not in stock, and/or don't have a recipe.
+      --          Consider using colonists to craft things like Domum Ornamentum blocks.
       else
-        if debugExtra then logLine(string.format("[CASE 5] Bridge Item - No Craft, Only Manual[%s]", debugInfo)) end
+        if debugExtra then logLine(string.format("[CASE 4] Bridge Item - No Craft, Only Manual[%s]", debugInfo)) end
         local domum = domumHandler(request)
         local craftObject = craftHandler(request, bridgeItem, bridge)
       end
