@@ -37,4 +37,5 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 
 # Videos
 v0.3 Setup & Quirks https://www.youtube.com/watch?v=bRNkBSM9rm4 - July 12'2025
+
 v0.1 Demo: https://www.youtube.com/watch?v=YkcoSeZRbsw (This video is old, script is much newer.)
