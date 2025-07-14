@@ -1,5 +1,5 @@
 local scriptName = "AE2 Colony"
-local scriptVersion = 0.4.1
+local scriptVersion = 0.4
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
 https://github.com/toastonrye/ae2Colony/blob/main/README.md
