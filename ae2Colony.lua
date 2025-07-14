@@ -1,5 +1,5 @@
 local scriptName = "AE2 Colony"
-local scriptVersion = 0.4
+local scriptVersion = "0.4.1"
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
 https://github.com/toastonrye/ae2Colony/blob/main/README.md
@@ -556,7 +556,7 @@ end
 -- [MAIN LOOP] --------------------------------------------------------------------------------------------------------
 cleanupOldLogs()
 local bridge, colony, monitor = setupPeripherals()
-local title = string.format("[INFO] %s v%.1f initialized", scriptName, scriptVersion)
+local title = string.format("[INFO] %s v%s initialized", scriptName, scriptVersion)
 print(title)
 logLine(title)
 
