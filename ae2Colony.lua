@@ -23,8 +23,8 @@ Srendi - Advanced Peripherals dev, fast support for bug troubleshooting!
 local exportSide = "front"
 local craftMaxStack = false         -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
 local scanInterval = 30             -- Probably shouldn't go much lower than 20s...
-local debugExtra = false            -- If true more info printed to log file.
-local doLog = false                 -- Leave false unless you have issues. Kinda spammy!
+local doLog = true                 -- Leave false unless you have issues. Kinda spammy!
+local doLogExtra = true            -- If true more info printed to log file.
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
 local maxLogSize = 200*1024 -- 100 KB
@@ -65,12 +65,12 @@ local gearTypes = {
 }
 
 local gearMaterials = {
-  wooden = "minecraft:wooden",
+  wood = "minecraft:wooden",      -- I think desc refers to wood not wooden?
   leather = "minecraft:leather",
   stone = "minecraft:stone",
   chain = "minecraft:chainmail",
   iron = "minecraft:iron",
-  golden = "minecraft:golden",
+  gold = "minecraft:golden",      -- I think desc refers to gold not golden?
   diamond = "minecraft:diamond",
 }
 
@@ -490,20 +490,20 @@ local function mainHandler(bridge, colony)
 
       -- [CASE 1] Skip tag c:foods by default. Eventually your colonists should farm and cook meals!
       if isTagBlacklisted then
-        if debugExtra then logLine(string.format("[CASE 1] Tag Blacklisted [%s]", debugInfo)) end
+        if doLogExtra then logLine(string.format("[CASE 1] Tag Blacklisted [%s]", debugInfo)) end
         if whitelistException then
-          if debugExtra then logLine("[CASE 1] Whitelist Exception") end
+          if doLogExtra then logLine("[CASE 1] Whitelist Exception") end
           local bridgeCount = (bridgeItem and bridgeItem.count) or 0
           local countDelta = bridgeCount - requestCount
           if countDelta > 0 then
-            if debugExtra then logLine("[CASE 1] Whitelist Exception - Export Full") end
+            if doLogExtra then logLine("[CASE 1] Whitelist Exception - Export Full") end
             queueExport(requestFingerprint, requestCount, requestName, requestTarget)
           elseif bridgeCount > 0 then
-            if debugExtra then logLine("[CASE 1] Whitelist Exception - Export & Craft") end
+            if doLogExtra then logLine("[CASE 1] Whitelist Exception - Export & Craft") end
             queueExport(requestFingerprint, bridgeCount, requestName, requestTarget)
             local craftObject = craftHandler(request, bridgeItem, bridge)
           else
-            if debugExtra then logLine("[CASE 1] Whitelist Exception - Craft") end
+            if doLogExtra then logLine("[CASE 1] Whitelist Exception - Craft") end
             local craftObject = craftHandler(request, bridgeItem, bridge)
           end
         else
@@ -511,10 +511,10 @@ local function mainHandler(bridge, colony)
         end
       -- [CASE 2] Matched keyword for tool or armour, try to export the max tiered material. Only non-enchanted.
       elseif gearName then
-        if debugExtra then logLine(string.format("[CASE 2] Gear Lookup [%s]", gearName)) end
+        if doLogExtra then logLine(string.format("[CASE 2] Gear Lookup [%s]", gearName)) end
         local gearStock = bridge.getItem({name = gearName, count = requestCount, components = {}})
         if gearStock and gearStock.count > 0 then
-          if debugExtra then logLine("[CASE 2] Gear In Stock: %s", gearName) end
+          if doLogExtra then logLine("[CASE 2] Gear In Stock: %s", gearName) end
           queueExport(nil, requestCount, gearName, requestTarget)
         else
           local simpleRequest = {
@@ -532,24 +532,24 @@ local function mainHandler(bridge, colony)
         end
     -- [CASE 3] Export if items are available, or export partial and craft. Crafted items get exported next scan.
       elseif bridgeItem then
-        if debugExtra then logLine(string.format("[CASE 3] Bridge Item [%s]", debugInfo)) end
+        if doLogExtra then logLine(string.format("[CASE 3] Bridge Item [%s]", debugInfo)) end
         local bridgeCount = bridgeItem.count or 0
         local countDelta = bridgeCount - requestCount
         if countDelta > 0 then
-          if debugExtra then logLine("[CASE 3] Bridge Item - Export Full") end
+          if doLogExtra then logLine("[CASE 3] Bridge Item - Export Full") end
           queueExport(requestFingerprint, requestCount, requestName, requestTarget)
         elseif bridgeCount > 0 then
-          if debugExtra then logLine(string.format("[CASE 3] Bridge Item - Export & Craft [%s]", debugInfo)) end
+          if doLogExtra then logLine(string.format("[CASE 3] Bridge Item - Export & Craft [%s]", debugInfo)) end
           queueExport(requestFingerprint, bridgeCount, requestName, requestTarget)
           local craftObject = craftHandler(request, bridgeItem, bridge)
         else
-          if debugExtra then logLine("[CASE 3] Bridge Item - Craft") end
+          if doLogExtra then logLine("[CASE 3] Bridge Item - Craft") end
           local craftObject = craftHandler(request, bridgeItem, bridge)
         end
       -- [CASE 4] These items are not in stock, and/or don't have a recipe.
       --          Consider using colonists to craft things like Domum Ornamentum blocks.
       else
-        if debugExtra then logLine(string.format("[CASE 4] Bridge Item - No Craft, Only Manual[%s]", debugInfo)) end
+        if doLogExtra then logLine(string.format("[CASE 4] Bridge Item - No Craft, Only Manual[%s]", debugInfo)) end
         local domum = domumHandler(request)
         local craftObject = craftHandler(request, bridgeItem, bridge)
       end
