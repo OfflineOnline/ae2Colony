@@ -1,0 +1,8 @@
+I don't really know how changelogs or versioning is suppose to work, but my attempt.
+
+v0.4.1
+  - modify craftingHandler to not use fingerprints, isCraftable() can't use fingerprints as an item filter in  AP 0.7.51b
+  
+v0.4 Changelog starts here, everything before 0.4 is forgotten to time.
+  - Script fairly stable, decent monitor display, pages
+  - AP 0.7.51b is the recommended version at the moment
