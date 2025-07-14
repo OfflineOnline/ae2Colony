@@ -1,5 +1,5 @@
 local scriptName = "AE2 Colony"
-local scriptVersion = 0.4
+local scriptVersion = 0.4.1
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
 https://github.com/toastonrye/ae2Colony/blob/main/README.md
@@ -370,7 +370,7 @@ end
 -- See blacklisted tags and whitelisted items table at top of script.
 -- Basically blacklist an entire tag like c:foods then whitelist food for colonists to cook, like raw beef. Or carrots/potatoes for hospitals.
 local function tagHandler(requestItem)
-  if whitelistItemName[requestItem.name] then
+  if requestItem and whitelistItemName[requestItem.name] then
     return true, true
   elseif requestItem.tags then
     for _, tag in pairs(requestItem.tags) do
@@ -430,7 +430,8 @@ local function craftHandler(request, bridgeItem, bridge)
   local craftable = nil
   local payload = {}
   local ok, object = nil, nil
-  local fingerprintBridge = bridgeItem and bridgeItem.fingerprint
+  -- isCraftable() currently can't use fingerprints as an item filter in AP 0.7.51b
+  local fingerprintBridge = nil --bridgeItem and bridgeItem.fingerprint
   local fingerprintRequest = request.items[1].fingerprint
   local name = request.items[1].name
   local maxStackSize = request.items[1].maxStackSize
@@ -492,7 +493,6 @@ local function mainHandler(bridge, colony)
       if isTagBlacklisted then
         if doLogExtra then logLine(string.format("[CASE 1] Tag Blacklisted [%s]", debugInfo)) end
         if whitelistException then
-          if doLogExtra then logLine("[CASE 1] Whitelist Exception") end
           local bridgeCount = (bridgeItem and bridgeItem.count) or 0
           --local countDelta = requestCount - bridgeCount
           if bridgeCount >= requestCount then
