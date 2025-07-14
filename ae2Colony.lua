@@ -23,8 +23,8 @@ Srendi - Advanced Peripherals dev, fast support for bug troubleshooting!
 local exportSide = "front"
 local craftMaxStack = false         -- Autocraft exact or a stack. ie 3 logs vs 64 logs.
 local scanInterval = 30             -- Probably shouldn't go much lower than 20s...
-local doLog = true                 -- Leave false unless you have issues. Kinda spammy!
-local doLogExtra = true            -- If true more info printed to log file.
+local doLog = false                 -- Leave false unless you have issues. Kinda spammy!
+local doLogExtra = false            -- If true more info printed to log file.
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
 local maxLogSize = 200*1024 -- 100 KB
@@ -494,14 +494,10 @@ local function mainHandler(bridge, colony)
         if whitelistException then
           if doLogExtra then logLine("[CASE 1] Whitelist Exception") end
           local bridgeCount = (bridgeItem and bridgeItem.count) or 0
-          local countDelta = bridgeCount - requestCount
-          if countDelta > 0 then
+          --local countDelta = requestCount - bridgeCount
+          if bridgeCount >= requestCount then
             if doLogExtra then logLine("[CASE 1] Whitelist Exception - Export Full") end
             queueExport(requestFingerprint, requestCount, requestName, requestTarget)
-          elseif bridgeCount > 0 then
-            if doLogExtra then logLine("[CASE 1] Whitelist Exception - Export & Craft") end
-            queueExport(requestFingerprint, bridgeCount, requestName, requestTarget)
-            local craftObject = craftHandler(request, bridgeItem, bridge)
           else
             if doLogExtra then logLine("[CASE 1] Whitelist Exception - Craft") end
             local craftObject = craftHandler(request, bridgeItem, bridge)
