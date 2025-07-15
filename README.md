@@ -2,14 +2,15 @@
 
 # ae2Colony
 A CC:Tweaked lua script that sends AE2 items to Minecolonies
+
 I expect to abandon this script at some point, if you want to make upgrades/changes feel free to comment somewhere here on the Github. I'd like to see it!
 
 ## Original Design Idea
 - Advanced Peripherals adds a cool in-game command "/advancedperipherals getHashItem" that returns an exact "fingerprint" of an item, enchants/ durability etc.
 
 ## Requirements
-1. **Advanced Peripehrals 0.7.51b** - This is the only version I've tested on as of July 12'2025
-2. Post bugs here on the issues page. I'm a hobby programmer so I welcome tips as well!
+- Advanced Peripherals versions 0.7.51b, 0.7.55b are confirmed working. Other versions likely are missing features this script requires.
+- Post bugs here on the issues page. I'm a hobby programmer so I welcome tips/suggestions as well!
 
 ## Setup
  ```wget https://raw.githubusercontent.com/toastonrye/ae2Colony/refs/heads/main/ae2Colony.lua```
