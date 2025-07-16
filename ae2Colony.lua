@@ -1,5 +1,14 @@
 local scriptName = "AE2 Colony"
 local scriptVersion = "0.4.1"
+local apVersions = {
+  ["0.7.51b"] = true, -- script can crash if colonists are missing tools/weapons/armour
+  ["0.7.55b"] = true  -- best version to use at the moment July 15'25
+}
+local requiredAP = advancedperipherals and advancedperipherals.getAPVersion()
+if not apVersions[requiredAP] then
+  error("Incompatible Advanced Peripherals version: " .. tostring(requiredAP))
+end
+
 --[[-------------------------------------------------------------------------------------------------------------------
 author: toastonrye
 https://github.com/toastonrye/ae2Colony/blob/main/README.md
@@ -28,6 +37,7 @@ local doLogExtra = false            -- If true more info printed to log file.
 local logFolder = "ae2Colony_logs"
 local maxLogs = 10
 local maxLogSize = 200*1024 -- 100 KB
+local alarm = nil                   -- Used to update monitor for errors.
 
 -- [BLACKLIST & WHITELIST LOOKUPS] --------------------------------------------------------------------------------------------------------
 -- blacklistedTags: all items matching the given tags are skipped, they do not export.
@@ -255,6 +265,9 @@ local function processExportBuffer(bridge)
   end
 end
 
+local function alarmInfo(result)
+end
+
 -- [HANDLERS] ---------------------------------------------------------------------------------------------------------
 -- AP fingerprints are amazing. Use "/advancedperipehrals getHashItem" in-game
 local function bridgeDataHandler(bridge)
@@ -333,11 +346,11 @@ local function colonyRequestHandler(colony)
     -- In v0.7.51b colony.getRequests() can fail because colonists are missing basic tools, some issue with enchantment data.
     -- Put a few basic wooden swords/hoes/shovel/pickaxe/axes in your warehouse.
     -- Also do leather armour as well, I've seen a failure from enchantment "feather falling".
+    alarm = result
     local msg = string.format("[ERROR] Critical failure for colony_integrator getRequests().")
     print(msg)
     logLine(msg)
     os.sleep(1)
-    error(result)
   end
 end
 
