@@ -20,6 +20,7 @@ I expect to abandon this script at some point, if you want to make upgrades/chan
 3. You need to understand how AE2 autocrafting and Minecolonies works. This script is an aid, it can't do everything!
 
 ### Known Issues
+- 0.7.55b is the best version to use as of July 19'25. 53b or 54b won't work at all.
 - In Advanced Peripherals(AP) 0.7.51b, for the colony integrator, getRequests() seems to crash if a colonist is missing some tools/armour.
 - If items don't seem to autocraft or hang, they maybe missing items. If it wants 100 chests but can only make 10, it won't make any!
 
